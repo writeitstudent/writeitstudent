@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WriteIt Assignment Assistant | Health &amp; Social Care</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--navy:#0f1b35;--gold:#c8973a;--gold2:#e8b04a;--cream:#f9f6f0;--border:rgba(200,151,58,0.25);--muted:rgba(249,246,240,0.55)}
+body{font-family:'DM Sans',sans-serif;background:var(--navy);color:var(--cream);min-height:100vh;overflow-x:hidden}
+.header{background:linear-gradient(135deg,#0a1220 0%,#1a2d52 60%,#0f1b35 100%);border-bottom:1px solid var(--border);padding:2.5rem 2rem 2rem;text-align:center;position:relative;overflow:hidden}
+.header::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 50% 0%,rgba(200,151,58,0.13) 0%,transparent 65%);pointer-events:none}
+.logo-badge{display:inline-flex;align-items:center;gap:10px;background:rgba(200,151,58,0.1);border:1px solid var(--border);border-radius:30px;padding:6px 18px;font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--gold);margin-bottom:1rem}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--gold);animation:pulse 2s infinite;flex-shrink:0}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.35}}
+h1{font-family:'Playfair Display',serif;font-size:clamp(1.9rem,5vw,3rem);font-weight:900;color:#fff;line-height:1.15;margin-bottom:0.5rem}
+h1 span{color:var(--gold)}
+.header-sub{font-size:14px;color:var(--muted);max-width:580px;margin:0.75rem auto 0;line-height:1.65}
+.tags{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin-top:1.5rem}
+.tag{background:rgba(200,151,58,0.08);border:1px solid rgba(200,151,58,0.2);border-radius:20px;padding:4px 13px;font-size:11px;color:var(--gold2);font-weight:500}
+.nav-bar{display:flex;background:rgba(8,14,26,0.9);border-bottom:1px solid var(--border);overflow-x:auto;position:sticky;top:0;z-index:100}
+.nav-tab{flex:1;min-width:110px;padding:1rem 0.75rem;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;letter-spacing:0.8px;text-align:center;color:rgba(249,246,240,0.4);cursor:pointer;border:none;border-bottom:2px solid transparent;background:none;text-transform:uppercase;transition:color 0.2s,border-color 0.2s;white-space:nowrap}
+.nav-tab:hover{color:rgba(249,246,240,0.75)}
+.nav-tab.active{color:var(--gold);border-bottom-color:var(--gold)}
+.panel{display:none}
+.panel.active{display:block;animation:fadeIn 0.25s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+.form-body{padding:2rem;max-width:880px;margin:0 auto}
+.section-label{font-size:10px;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;color:var(--gold);margin-bottom:0.6rem}
+.form-group{margin-bottom:1.75rem}
+.form-group label{display:block;font-size:14px;font-weight:500;color:#fff;margin-bottom:0.5rem}
+.opt{font-size:11px;font-weight:400;color:rgba(249,246,240,0.38);margin-left:6px}
+.form-group textarea,.form-group input,.form-group select{width:100%;background:rgba(255,255,255,0.04);border:1px solid rgba(200,151,58,0.22);border-radius:10px;color:var(--cream);font-family:'DM Sans',sans-serif;font-size:14px;padding:0.75rem 1rem;outline:none;transition:border-color 0.2s,background 0.2s;resize:vertical;-webkit-appearance:none}
+.form-group textarea:focus,.form-group input:focus,.form-group select:focus{border-color:var(--gold);background:rgba(200,151,58,0.05)}
+.form-group textarea{min-height:110px}
+.form-group select option{background:#1a2d52;color:#fff}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:1.25rem}
+@media(max-width:580px){.row2{grid-template-columns:1fr}}
+.hint{font-size:12px;color:rgba(249,246,240,0.38);margin-top:0.4rem;line-height:1.55}
+.divider{border:none;border-top:1px solid rgba(200,151,58,0.12);margin:2rem 0}
+.btn-generate{width:100%;padding:1.15rem;background:linear-gradient(135deg,#c8973a 0%,#e8b04a 100%);color:#0f1b35;border:none;border-radius:12px;font-family:'Playfair Display',serif;font-size:1.15rem;font-weight:700;cursor:pointer;transition:transform 0.15s,box-shadow 0.2s}
+.btn-generate:hover:not(:disabled){transform:translateY(-2px);box-shadow:0 8px 28px rgba(200,151,58,0.32)}
+.btn-generate:disabled{opacity:0.45;cursor:not-allowed}
+.output-box{background:rgba(255,255,255,0.03);border:1px solid rgba(200,151,58,0.15);border-radius:14px;padding:2rem;margin-top:2rem;position:relative;overflow:hidden;min-height:280px}
+.blur-overlay{position:absolute;bottom:0;left:0;right:0;height:60%;background:linear-gradient(to bottom,transparent 0%,rgba(15,27,53,0.98) 45%);z-index:2;display:flex;align-items:flex-end;justify-content:center;padding-bottom:1.5rem}
+.output-text{font-size:14px;line-height:1.9;color:rgba(249,246,240,0.82);white-space:pre-wrap}
+.output-heading{font-family:'Playfair Display',serif;font-size:1.2rem;font-weight:700;color:#fff;margin-bottom:1rem;padding-bottom:0.75rem;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.preview-label{font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;background:rgba(200,151,58,0.15);color:var(--gold);border-radius:20px;padding:3px 11px}
+.cta-card{background:linear-gradient(135deg,rgba(200,151,58,0.13),rgba(200,151,58,0.04));border:1px solid rgba(200,151,58,0.38);border-radius:14px;padding:1.75rem;text-align:center;position:relative;z-index:3;width:100%;max-width:480px}
+.cta-card h3{font-family:'Playfair Display',serif;font-size:1.1rem;color:#fff;margin-bottom:0.5rem}
+.cta-card p{font-size:13px;color:var(--muted);margin-bottom:1.25rem;line-height:1.65}
+.cta-email{display:inline-block;background:var(--gold);color:#0f1b35;font-weight:700;font-size:14px;padding:0.75rem 1.75rem;border-radius:8px;text-decoration:none}
+.upgrade-nudge{margin-top:1.25rem;background:rgba(255,255,255,0.03);border:1px solid rgba(200,151,58,0.15);border-radius:10px;padding:1.25rem;text-align:center}
+.upgrade-nudge p{font-size:13px;color:var(--muted);margin-bottom:0.75rem}
+.upgrade-nudge button{background:rgba(200,151,58,0.14);border:1px solid var(--gold);color:var(--gold);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;padding:0.6rem 1.5rem;border-radius:8px;cursor:pointer}
+.loading-state{text-align:center;padding:3.5rem 1rem}
+.spinner{width:42px;height:42px;border:3px solid rgba(200,151,58,0.18);border-top-color:var(--gold);border-radius:50%;animation:spin 0.85s linear infinite;margin:0 auto 1rem}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-state p{color:var(--muted);font-size:14px}
+.sub-body{padding:2rem;max-width:880px;margin:0 auto}
+.sub-hero{text-align:center;padding:2.5rem 1.5rem 2rem;border-bottom:1px solid rgba(200,151,58,0.1);margin-bottom:2rem}
+.sub-hero h2{font-family:'Playfair Display',serif;font-size:clamp(1.5rem,3vw,2rem);font-weight:900;color:#fff;margin-bottom:0.75rem}
+.sub-hero p{font-size:14px;color:var(--muted);line-height:1.75;max-width:560px;margin:0 auto}
+.plan-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:1.25rem;margin-bottom:2rem}
+.plan-card{background:rgba(255,255,255,0.03);border:1px solid rgba(200,151,58,0.2);border-radius:16px;padding:1.75rem 1.5rem;text-align:center;position:relative;transition:border-color 0.2s,background 0.2s,transform 0.18s}
+.plan-card:hover{border-color:var(--gold);background:rgba(200,151,58,0.05);transform:translateY(-4px)}
+.plan-card.featured{border-color:var(--gold);background:rgba(200,151,58,0.07)}
+.popular-badge{position:absolute;top:-11px;left:50%;transform:translateX(-50%);background:var(--gold);color:#0f1b35;font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;padding:3px 14px;border-radius:20px;white-space:nowrap}
+.plan-icon{font-size:2rem;margin-bottom:0.75rem;display:block}
+.plan-name{font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--gold);margin-bottom:0.4rem}
+.plan-tagline{font-size:14px;font-weight:500;color:#fff;margin-bottom:0.25rem}
+.plan-desc{font-size:12px;color:rgba(249,246,240,0.4);margin-bottom:1.25rem}
+.plan-features{list-style:none;text-align:left;margin-bottom:1.5rem}
+.plan-features li{font-size:12px;color:rgba(249,246,240,0.7);padding:5px 0 5px 18px;position:relative;border-bottom:1px solid rgba(255,255,255,0.04)}
+.plan-features li:last-child{border-bottom:none}
+.plan-features li::before{content:'✓';position:absolute;left:0;top:5px;color:var(--gold);font-weight:700;font-size:11px}
+.plan-cta{display:block;width:100%;padding:0.75rem 1rem;background:rgba(200,151,58,0.12);border:1px solid rgba(200,151,58,0.35);color:var(--gold);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;border-radius:8px;cursor:pointer;text-decoration:none;transition:background 0.2s;text-align:center}
+.plan-cta:hover{background:rgba(200,151,58,0.22)}
+.plan-card.featured .plan-cta{background:var(--gold);color:#0f1b35;border-color:var(--gold)}
+.payment-note{background:rgba(255,255,255,0.025);border:1px solid rgba(200,151,58,0.12);border-radius:12px;padding:1.5rem;margin-bottom:1.5rem}
+.payment-note h4{font-size:13px;font-weight:600;color:var(--gold2);margin-bottom:0.65rem}
+.payment-note p{font-size:13px;color:var(--muted);line-height:1.7}
+.transfer-chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:0.85rem}
+.chip{background:rgba(200,151,58,0.08);border:1px solid rgba(200,151,58,0.2);border-radius:20px;padding:4px 13px;font-size:11px;color:var(--gold2);font-weight:500}
+.contact-cta-big{background:linear-gradient(135deg,rgba(200,151,58,0.14),rgba(200,151,58,0.04));border:1px solid rgba(200,151,58,0.3);border-radius:14px;padding:2.25rem 2rem;text-align:center;margin-bottom:1rem}
+.contact-cta-big h3{font-family:'Playfair Display',serif;font-size:1.5rem;color:#fff;margin-bottom:0.6rem}
+.contact-cta-big p{font-size:13.5px;color:var(--muted);margin-bottom:1.5rem;line-height:1.7;max-width:480px;margin-left:auto;margin-right:auto}
+.btn-email-big{display:inline-block;background:var(--gold);color:#0f1b35;font-weight:700;font-size:15px;padding:0.9rem 2.5rem;border-radius:10px;text-decoration:none}
+.about-body{padding:2rem;max-width:780px;margin:0 auto}
+.about-block{background:rgba(255,255,255,0.025);border:1px solid rgba(200,151,58,0.12);border-radius:12px;padding:1.5rem;margin-bottom:1.25rem}
+.about-block h3{font-family:'Playfair Display',serif;font-size:1.1rem;color:var(--gold);margin-bottom:0.75rem}
+.about-block p,.about-block li{font-size:13.5px;color:rgba(249,246,240,0.7);line-height:1.8}
+.about-block ul{padding-left:1.25rem}
+.about-block ul li{margin-bottom:0.35rem}
+.about-block strong{color:rgba(249,246,240,0.95)}
+.security-bar{background:rgba(8,14,26,0.95);border-top:1px solid rgba(200,151,58,0.1);padding:0.85rem 2rem;display:flex;justify-content:center;gap:2rem;flex-wrap:wrap}
+.sec-item{display:flex;align-items:center;gap:6px;font-size:11px;color:rgba(249,246,240,0.38)}
+.sec-dot{width:6px;height:6px;background:#1d9e75;border-radius:50%;flex-shrink:0}
+.disclaimer-box{display:flex;gap:1rem;background:rgba(200,151,58,0.06);border:1px solid rgba(200,151,58,0.3);border-radius:12px;padding:1.25rem 1.5rem;margin-bottom:1.5rem;align-items:flex-start}
+.disclaimer-icon{font-size:1.4rem;flex-shrink:0;margin-top:2px}
+.disclaimer-text strong{display:block;font-size:13px;font-weight:600;color:var(--gold2);margin-bottom:0.5rem;letter-spacing:0.2px}
+.disclaimer-text p{font-size:12.5px;color:rgba(249,246,240,0.65);line-height:1.7;margin-bottom:0.5rem}
+.disclaimer-text p:last-child{margin-bottom:0}
+.disclaimer-text a{color:var(--gold);text-decoration:underline}
+.disclaimer-text a:hover{color:var(--gold2)}
+.disclaimer-small{background:rgba(200,151,58,0.05);border:1px solid rgba(200,151,58,0.18);border-radius:10px;padding:1rem 1.25rem;margin-top:1.25rem;font-size:12px;color:rgba(249,246,240,0.55);line-height:1.7}
+.disclaimer-small a{color:var(--gold);text-decoration:underline}
+.toast{position:fixed;bottom:2rem;left:50%;transform:translateX(-50%) translateY(80px);background:#1a2d52;border:1px solid var(--border);color:var(--cream);font-size:13px;padding:0.75rem 1.5rem;border-radius:8px;opacity:0;transition:opacity 0.3s,transform 0.3s;z-index:9999}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+@media(max-width:600px){.form-body,.sub-body,.about-body{padding:1.25rem}.plan-grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<div id="toast" class="toast"></div>
+
+<header class="header">
+  <div class="logo-badge"><span class="dot"></span>Health &amp; Social Care Qualifications</div>
+  <h1>WriteIt <span>Assignment</span> Assistant</h1>
+  <p class="header-sub">Professional academic writing powered by AI — designed for care workers who know the job but need the words.</p>
+  <div class="tags">
+    <span class="tag">Residential Childcare</span>
+    <span class="tag">Young People</span>
+    <span class="tag">Adult Care</span>
+    <span class="tag">Level 2 – Level 5</span>
+    <span class="tag">NVQ / Diploma</span>
+    <span class="tag">OFSTED Ready</span>
+    <span class="tag">CQC Ready</span>
+  </div>
+</header>
+
+<nav class="nav-bar">
+  <button class="nav-tab active" onclick="switchTab('write')">Write Assignment</button>
+  <button class="nav-tab" onclick="switchTab('subscribe')">Get Access</button>
+  <button class="nav-tab" onclick="switchTab('about')">About</button>
+</nav>
+
+<!-- ══ WRITE PANEL ══ -->
+<section class="panel active" id="panel-write">
+<div class="form-body">
+  <div class="section-label">Step 1 — Your Question</div>
+  <div class="form-group">
+    <label for="question">Assignment / Knowledge Question <span class="opt">required</span></label>
+    <textarea id="question" placeholder="e.g. Explain the importance of safeguarding in adult care and how you apply this in your daily practice..."></textarea>
+    <div class="hint">Paste your full assignment question exactly as given by your assessor.</div>
+  </div>
+  <div class="row2">
+    <div class="form-group">
+      <label for="wordcount">Target Word Count <span class="opt">required</span></label>
+      <input type="number" id="wordcount" placeholder="e.g. 800" min="100" max="5000"/>
+    </div>
+    <div class="form-group">
+      <label for="level">Qualification Level <span class="opt">required</span></label>
+      <select id="level">
+        <option value="">— Select Level —</option>
+        <option>Level 2 Certificate</option>
+        <option>Level 3 Certificate</option>
+        <option>Level 3 Diploma</option>
+        <option>Level 4 Certificate</option>
+        <option>Level 4 Diploma</option>
+        <option>Level 5 Diploma (Management)</option>
+        <option>T-Level / Foundation</option>
+      </select>
+    </div>
+  </div>
+  <div class="row2">
+    <div class="form-group">
+      <label for="refstyle">Referencing Style <span class="opt">required</span></label>
+      <select id="refstyle">
+        <option value="">— Select Style —</option>
+        <option>Harvard</option>
+        <option>APA 7th Edition</option>
+        <option>Vancouver</option>
+        <option>OSCOLA</option>
+        <option>No referencing required</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label for="workplace">Workplace Setting <span class="opt">optional</span></label>
+      <select id="workplace">
+        <option value="">— Select Setting —</option>
+        <option>Residential Children's Home</option>
+        <option>Fostering / Supported Lodgings</option>
+        <option>Supported Living (Adults)</option>
+        <option>Nursing / Care Home (Elderly)</option>
+        <option>Domiciliary / Home Care</option>
+        <option>Day Centre / Community Support</option>
+        <option>Mental Health Services</option>
+        <option>Learning Disabilities Support</option>
+        <option>Hospital / NHS Ward</option>
+        <option>Early Years / Nursery</option>
+        <option>Other</option>
+      </select>
+    </div>
+  </div>
+  <div class="form-group">
+    <label for="scenario">Your Practical Scenario <span class="opt">optional — highly recommended</span></label>
+    <textarea id="scenario" style="min-height:130px" placeholder="Describe a real situation from your work. e.g. 'I work with a 16-year-old in a residential home who disclosed abuse. I followed our safeguarding policy by…'"></textarea>
+    <div class="hint">Makes your assignment unique to you. Names are anonymised automatically.</div>
+  </div>
+  <div class="form-group">
+    <label for="learneremail">Your Email Address <span class="opt">optional</span></label>
+    <input type="email" id="learneremail" placeholder="you@example.com" style="min-height:unset"/>
+    <div class="hint">We'll send your preview. Full assignment sent once you subscribe.</div>
+  </div>
+  <div class="form-group">
+    <label for="extras">Additional Instructions <span class="opt">optional</span></label>
+    <textarea id="extras" style="min-height:70px" placeholder="e.g. Focus on the Mental Capacity Act 2005, include Maslow's hierarchy..."></textarea>
+  </div>
+  <hr class="divider">
+
+  <div class="disclaimer-box">
+    <div class="disclaimer-icon">&#9888;</div>
+    <div class="disclaimer-text">
+      <strong>Important Notice Before You Submit</strong>
+      <p>This assignment is generated using AI. Before submitting to your assessor or awarding body, you must check it using a detector such as <a href="https://www.zerogpt.com" target="_blank" rel="noopener">ZeroGPT</a> or <a href="https://gptzero.me" target="_blank" rel="noopener">GPTZero</a> to check the AI percentage.</p>
+      <p>If your score is too high and you need the work humanised before submission, this is an additional service offered by admin. Get in touch at <a href="mailto:writeit.student@gmail.com?subject=AI Humanisation Service&body=Hi, I need help humanising my assignment before submission. Please send me the details and pricing.">writeit.student@gmail.com</a> to discuss.</p>
+    </div>
+  </div>
+
+  <button class="btn-generate" id="btn-gen" onclick="generateAssignment()">Generate My Assignment</button>
+
+  <div id="output-area" style="display:none">
+    <div class="output-box">
+      <div class="output-heading">
+        <span>Your Assignment Preview</span>
+        <span class="preview-label">Preview Only</span>
+      </div>
+      <div class="output-text" id="out-text"></div>
+      <div class="blur-overlay">
+        <div class="cta-card">
+          <h3>Your full assignment is ready</h3>
+          <p>Contact admin to receive your complete assignment, full reference list, and email delivery.</p>
+          <a class="cta-email" href="mailto:writeit.student@gmail.com?subject=Full Assignment Request&body=Hi, I have used WriteIt and would like the full assignment. Please send access details.">Contact Admin for Full Response</a>
+          <p style="margin-top:0.75rem;font-size:12px;color:rgba(249,246,240,0.4)">writeit.student@gmail.com</p>
+        </div>
+      </div>
+    </div>
+    <div class="upgrade-nudge">
+      <p>Want your <strong style="color:#fff">full assignment</strong> + <strong style="color:#fff">complete reference list</strong> sent to your inbox?</p>
+      <button onclick="switchTab('subscribe')">View Access Plans →</button>
+    </div>
+
+    <div class="disclaimer-small">
+      &#9888; <strong style="color:rgba(249,246,240,0.85)">Before you submit:</strong> Always check your assignment through an AI detector such as <a href="https://www.zerogpt.com" target="_blank" rel="noopener">ZeroGPT</a> or <a href="https://gptzero.me" target="_blank" rel="noopener">GPTZero</a>. If your AI percentage is too high, admin offers an <strong style="color:rgba(249,246,240,0.85)">AI Humanisation Service</strong> to reduce it before you submit. Email <a href="mailto:writeit.student@gmail.com?subject=AI Humanisation Service&body=Hi, I need my assignment humanised before I submit it. Please send me the details and cost.">writeit.student@gmail.com</a> to discuss.
+    </div>
+
+  </div>
+
+  <div id="loading-area" style="display:none" class="loading-state">
+    <div class="spinner"></div>
+    <p id="loading-msg">Analysing your question…</p>
+  </div>
+</div>
+</section>
+
+<!-- ══ SUBSCRIBE PANEL ══ -->
+<section class="panel" id="panel-subscribe">
+<div class="sub-body">
+  <div class="sub-hero">
+    <h2>Unlock Your Full Assignment</h2>
+    <p>Choose the access plan that suits you. Get in touch with admin to discuss your plan, confirm payment, and get your full assignment delivered straight to your inbox.</p>
+  </div>
+  <div class="plan-grid">
+    <div class="plan-card">
+      <span class="plan-icon">⚡</span>
+      <div class="plan-name">Day Pass</div>
+      <div class="plan-tagline">Quick &amp; Immediate</div>
+      <div class="plan-desc">24-hour full access</div>
+      <ul class="plan-features">
+        <li>Up to 3 full assignments</li>
+        <li>Complete reference lists</li>
+        <li>Email delivery</li>
+        <li>All referencing styles</li>
+      </ul>
+      <a class="plan-cta" href="mailto:writeit.student@gmail.com?subject=Day Pass Enquiry&body=Hi, I am interested in the Day Pass. Please send pricing and payment instructions.">Enquire about Day Pass</a>
+    </div>
+    <div class="plan-card featured">
+      <div class="popular-badge">Most Popular</div>
+      <span class="plan-icon">🗓</span>
+      <div class="plan-name">Weekly Access</div>
+      <div class="plan-tagline">Best for Busy Workers</div>
+      <div class="plan-desc">7 days unlimited use</div>
+      <ul class="plan-features">
+        <li>Unlimited assignments</li>
+        <li>Full text + references</li>
+        <li>Email + download</li>
+        <li>All referencing styles</li>
+        <li>Priority generation</li>
+      </ul>
+      <a class="plan-cta" href="mailto:writeit.student@gmail.com?subject=Weekly Access Enquiry&body=Hi, I am interested in Weekly Access. Please send pricing and payment instructions.">Enquire about Weekly</a>
+    </div>
+    <div class="plan-card">
+      <span class="plan-icon">🏆</span>
+      <div class="plan-name">Monthly Access</div>
+      <div class="plan-tagline">Best for Employers</div>
+      <div class="plan-desc">30 days unlimited use</div>
+      <ul class="plan-features">
+        <li>Unlimited assignments</li>
+        <li>Full text + references</li>
+        <li>Email + download</li>
+        <li>All referencing styles</li>
+        <li>Priority generation</li>
+        <li>Team / staff access</li>
+      </ul>
+      <a class="plan-cta" href="mailto:writeit.student@gmail.com?subject=Monthly Access Enquiry&body=Hi, I am interested in Monthly Access. Please send pricing and payment instructions.">Enquire about Monthly</a>
+    </div>
+  </div>
+  <div class="payment-note">
+    <h4>How Payment Works</h4>
+    <p>Once you contact admin, you'll receive full pricing details and simple payment instructions. Payment is accepted via international mobile money transfer — quick, easy, accessible from anywhere.</p>
+    <div class="transfer-chips">
+      <span class="chip">Remitly</span>
+      <span class="chip">Tap Tap Send</span>
+      <span class="chip">WorldRemit</span>
+      <span class="chip">Western Union</span>
+      <span class="chip">Other transfers welcome</span>
+    </div>
+  </div>
+  <div class="contact-cta-big">
+    <h3>Ready to get started?</h3>
+    <p>Email admin to discuss the right plan, confirm pricing, and get your access set up. Your full assignment will be delivered straight to your inbox.</p>
+    <a class="btn-email-big" href="mailto:writeit.student@gmail.com?subject=WriteIt Access Enquiry&body=Hi, I would like to discuss access to WriteIt Assignment Assistant. Please send me the details.">Email Admin Now</a>
+    <p style="margin-top:1rem;font-size:12px;color:rgba(249,246,240,0.4)">writeit.student@gmail.com</p>
+  </div>
+</div>
+</section>
+
+<!-- ══ ABOUT PANEL ══ -->
+<section class="panel" id="panel-about">
+<div class="about-body">
+  <div class="about-block">
+    <h3>Why WriteIt Exists</h3>
+    <p>Designed by a Health and Social Care Assessor and IQA with years of frontline experience, WriteIt was built to close a very real gap: care workers who are exceptional at their jobs but struggle to transfer that knowledge onto paper. The demands of care leave little time for academic writing — this tool bridges that gap.</p>
+  </div>
+  <div class="about-block">
+    <h3>What the Tool Does</h3>
+    <ul>
+      <li>Writes assignments in <strong>first person</strong>, linking your real practice to theory</li>
+      <li>Uses <strong>UK case studies and legislation</strong> (Care Act 2014, Children Act 1989, MCA 2005, etc.)</li>
+      <li>Generates fully <strong>in-text referenced</strong> work in your chosen style</li>
+      <li>Provides a <strong>complete reference list</strong> with live UK web links</li>
+      <li>Uses <strong>natural human language</strong> to minimise AI detection flags</li>
+      <li>Personalises every answer using your scenario and workplace setting</li>
+    </ul>
+  </div>
+  <div class="about-block">
+    <h3>Who This Is For</h3>
+    <ul>
+      <li>Support Workers completing NVQs and Diplomas</li>
+      <li>Care Providers needing staff certificated for OFSTED and CQC inspections</li>
+      <li>Employers wanting staff to progress qualifications quickly</li>
+      <li>Assessors and IQAs who want a study guide resource for learners</li>
+    </ul>
+  </div>
+  <div class="about-block">
+    <h3>Security &amp; Privacy</h3>
+    <ul>
+      <li>No scenario data is stored or shared with third parties</li>
+      <li>All API communications are encrypted (HTTPS)</li>
+      <li>GDPR compliant data handling</li>
+      <li>Rate limiting and abuse protection active at all times</li>
+    </ul>
+  </div>
+  <div style="text-align:center;padding:1rem 0 0.5rem">
+    <p style="font-size:13px;color:rgba(249,246,240,0.45)">Built for care. Backed by experience. Delivered with precision.</p>
+    <a href="mailto:writeit.student@gmail.com" style="color:#c8973a;font-size:13px">writeit.student@gmail.com</a>
+  </div>
+</div>
+</section>
+
+<footer class="security-bar">
+  <div class="sec-item"><span class="sec-dot"></span>Encrypted (HTTPS)</div>
+  <div class="sec-item"><span class="sec-dot"></span>GDPR Compliant</div>
+  <div class="sec-item"><span class="sec-dot"></span>UK Legislation Current</div>
+  <div class="sec-item"><span class="sec-dot"></span>No Data Stored</div>
+  <div class="sec-item"><span class="sec-dot"></span>Rate Protected</div>
+</footer>
+
+<script>
+var MSGS = [
+  'Analysing your question…',
+  'Linking theory to practice…',
+  'Applying UK legislation and case studies…',
+  'Generating in-text references…',
+  'Humanising the language…',
+  'Structuring your assignment…',
+  'Compiling the reference list…',
+  'Finalising your assignment…'
+];
+
+function switchTab(name) {
+  var tabs = ['write','subscribe','about'];
+  var navBtns = document.querySelectorAll('.nav-tab');
+  for (var i = 0; i < tabs.length; i++) {
+    var panel = document.getElementById('panel-' + tabs[i]);
+    var btn = navBtns[i];
+    if (tabs[i] === name) {
+      panel.classList.add('active');
+      btn.classList.add('active');
+    } else {
+      panel.classList.remove('active');
+      btn.classList.remove('active');
+    }
+  }
+  window.scrollTo({top: 0, behavior: 'smooth'});
+}
+
+function showToast(msg) {
+  var toast = document.getElementById('toast');
+  toast.textContent = msg;
+  toast.classList.add('show');
+  setTimeout(function() { toast.classList.remove('show'); }, 4000);
+}
+
+function generateAssignment() {
+  var question   = document.getElementById('question').value.trim();
+  var wordcount  = document.getElementById('wordcount').value.trim();
+  var level      = document.getElementById('level').value;
+  var refstyle   = document.getElementById('refstyle').value;
+  var workplace  = document.getElementById('workplace').value;
+  var scenario   = document.getElementById('scenario').value.trim();
+  var extras     = document.getElementById('extras').value.trim();
+
+  if (!question)  { showToast('Please enter your assignment question.'); return; }
+  if (!wordcount) { showToast('Please enter a target word count.'); return; }
+  if (!level)     { showToast('Please select your qualification level.'); return; }
+  if (!refstyle)  { showToast('Please select a referencing style.'); return; }
+
+  var btn = document.getElementById('btn-gen');
+  btn.disabled = true;
+  document.getElementById('output-area').style.display = 'none';
+  document.getElementById('loading-area').style.display = 'block';
+
+  var msgIdx = 0;
+  var msgEl = document.getElementById('loading-msg');
+  var msgTimer = setInterval(function() {
+    msgIdx = (msgIdx + 1) % MSGS.length;
+    msgEl.textContent = MSGS[msgIdx];
+  }, 2400);
+
+  var systemPrompt = [
+    'You are a Health and Social Care practitioner writing your own assignment in your own words. You are NOT an AI assistant producing a document — you are a real care worker sitting down to write about your practice.',
+    '',
+    'VOICE AND TONE — THIS IS THE MOST IMPORTANT INSTRUCTION:',
+    'Write exactly as an experienced but non-academic care worker would write. This means:',
+    '- Sentences that feel like real thought, not polished prose. Some short. Some longer and a bit rambling before making the point.',
+    '- Use contractions naturally: I\'ve, I\'m, it\'s, that\'s, wouldn\'t, couldn\'t, I\'d',
+    '- Start some sentences with "And" or "But" — real writers do this.',
+    '- Include genuine hesitation phrases: "if I\'m honest", "what I\'ve come to realise", "looking back", "it wasn\'t always easy", "I think what helped most was"',
+    '- Repeat an idea in slightly different words the way people do when they\'re genuinely reflecting',
+    '- Occasionally use a dash to add a thought — like this — mid sentence',
+    '- Do NOT use bullet points, numbered lists, bold headings, or subheadings of any kind anywhere in the assignment body',
+    '- Do NOT label sections with words like Introduction, Main Body, Conclusion, or any other heading',
+    '- Write the entire assignment as one continuous flowing essay — paragraph after paragraph, no breaks, no titles, no labels',
+    '- Do NOT write in perfectly balanced paragraphs all the same length. Mix it up — one paragraph might be two sentences, the next might be six',
+    '- Do NOT use formal academic signposting like "Furthermore", "Moreover", "In conclusion", "This essay will"',
+    '- DO use natural transitions: "What I noticed was", "That experience made me think about", "It\'s something I keep coming back to", "In practice this means"',
+    '',
+    'CONTENT REQUIREMENTS:',
+    '- Written entirely in first person throughout',
+    '- Link real UK theory to practice — Bowlby, Maslow, Kolb, Rogers, Bronfenbrenner — but explain them as if you discovered them through your work, not read them in a textbook',
+    '- Weave in UK legislation naturally — Care Act 2014, Children Act 1989, Mental Capacity Act 2005, Equality Act 2010, Working Together to Safeguard Children 2018, Human Rights Act 1998, GDPR 2018',
+    '- Reference real UK cases conversationally where relevant — Victoria Climbié, Baby P, Winterbourne View',
+    '- Include accurate in-text references in the requested style but place them naturally, not at the end of every sentence',
+    '- Embed the personal scenario throughout as lived experience, anonymising names as "one young person I support" or "a service user I work with"',
+    '- End with a proper Reference List using real UK sources with working web links (GOV.UK, SCIE, Skills for Care, NHS, NSPCC, CQC)',
+    '- Match depth and complexity to the qualification level',
+    '',
+    'Begin writing immediately with the actual assignment text. No titles, no preamble, no "Here is your assignment".'
+  ].join('\n');
+
+  var userPrompt = 'QUESTION TO ANSWER: ' + question + '\n\n' +
+    'WORD COUNT: ' + wordcount + ' words\n' +
+    'QUALIFICATION LEVEL: ' + level + '\n' +
+    'REFERENCING STYLE: ' + refstyle + '\n' +
+    'WORKPLACE: ' + (workplace || 'Health and Social Care (general UK setting)') + '\n' +
+    (scenario ? '\nMY PERSONAL EXPERIENCE TO INCLUDE:\n' + scenario + '\n' : '\nNo specific scenario provided — draw on typical experiences from the workplace setting above.\n') +
+    (extras ? '\nEXTRA NOTES:\n' + extras + '\n' : '') +
+    '\nWrite the assignment now as a genuine reflective practitioner. Sound like a real person who does this job every day. Bring in specific moments, feelings, and realisations — not just theory. References should appear naturally in the flow of the writing, not mechanically after every sentence. End with a complete Reference List using real UK web links.';
+
+
+  fetch('/api/generate', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+      system: systemPrompt,
+      userPrompt: userPrompt,
+      question: question,
+      level: level,
+      wordcount: wordcount
+    })
+  })
+  .then(function(res) {
+    if (!res.ok) {
+      return res.json().then(function(e) {
+        throw new Error(e.error || 'Server error — please try again.');
+      });
+    }
+    return res.json();
+  })
+  .then(function(data) {
+    clearInterval(msgTimer);
+    var fullText = data.content || '';
+    var words = fullText.split(/\s+/);
+    var previewEnd = Math.floor(words.length * 0.40);
+    var previewText = words.slice(0, previewEnd).join(' ') + '\n\n[…contact admin for the complete assignment and full reference list]';
+
+    document.getElementById('out-text').textContent = previewText;
+    document.getElementById('loading-area').style.display = 'none';
+    document.getElementById('output-area').style.display = 'block';
+    btn.disabled = false;
+
+    setTimeout(function() {
+      document.getElementById('output-area').scrollIntoView({behavior: 'smooth', block: 'start'});
+    }, 250);
+  })
+  .catch(function(err) {
+    clearInterval(msgTimer);
+    document.getElementById('loading-area').style.display = 'none';
+    btn.disabled = false;
+    showToast('Error: ' + (err.message || 'Something went wrong. Please try again.'));
+    console.error(err);
+  });
+}
+</script>
+</body>
+</html>
