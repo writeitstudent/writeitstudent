@@ -105,6 +105,9 @@ h1 span{color:var(--gold)}
 .upload-box .upload-label strong{color:var(--gold);display:block;margin-bottom:0.25rem;font-size:14px}
 .upload-success{display:none;align-items:center;gap:8px;background:rgba(29,158,117,0.1);border:1px solid rgba(29,158,117,0.3);border-radius:8px;padding:0.6rem 1rem;margin-top:0.75rem;font-size:13px;color:rgba(249,246,240,0.8)}
 .upload-success .check{color:#1d9e75;font-size:1rem}
+.brief-divider{display:flex;align-items:center;gap:1rem;margin:1rem 0}
+.brief-divider::before,.brief-divider::after{content:'';flex:1;border-top:1px solid rgba(200,151,58,0.18)}
+.brief-divider span{font-size:11px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:rgba(249,246,240,0.3)}
 .disclaimer-box{display:flex;gap:1rem;background:rgba(200,151,58,0.06);border:1px solid rgba(200,151,58,0.3);border-radius:12px;padding:1.25rem 1.5rem;margin-bottom:1.5rem;align-items:flex-start}
 .disclaimer-icon{font-size:1.4rem;flex-shrink:0;margin-top:2px}
 .disclaimer-text strong{display:block;font-size:13px;font-weight:600;color:var(--gold2);margin-bottom:0.5rem;letter-spacing:0.2px}
@@ -209,13 +212,14 @@ h1 span{color:var(--gold)}
   </div>
   <div class="form-group">
     <label>Assignment Brief <span class="opt">optional — highly recommended</span></label>
+    <p style="font-size:12px;color:rgba(249,246,240,0.45);margin-bottom:0.75rem;line-height:1.6">You can upload a file, paste the text, or use both together — whatever is most convenient for you.</p>
     <div class="upload-box" id="upload-box">
-      <input type="file" id="brieffile" accept=".pdf,.doc,.docx,.txt" onchange="handleFileUpload(this)"/>
+      <input type="file" id="brieffile" accept=".pdf,.txt" onchange="handleFileUpload(this)"/>
       <div class="upload-icon">📄</div>
       <div class="upload-label">
         <strong>Upload your Assignment Brief</strong>
         Click to upload or drag and drop your brief here<br/>
-        Accepts PDF, Word (.doc/.docx), or Text files
+        Accepts PDF or Text (.txt) files &nbsp;|&nbsp; Word doc? Save as PDF first
       </div>
     </div>
     <div class="upload-success" id="upload-success">
@@ -223,7 +227,11 @@ h1 span{color:var(--gold)}
       <span id="upload-filename">Brief uploaded</span>
       <button onclick="clearUpload()" style="margin-left:auto;background:none;border:none;color:rgba(249,246,240,0.4);cursor:pointer;font-size:12px">✕ Remove</button>
     </div>
-    <div class="hint">Upload the exact brief from your assessor or awarding body. The tool will write directly to those requirements.</div>
+    <div class="hint">Upload the exact brief from your assessor or awarding body (PDF or .txt). Word doc? Open in Word → File → Save As → PDF first.</div>
+    <div class="brief-divider"><span>and / or</span></div>
+    <label for="briefpaste" style="display:block;font-size:13px;font-weight:500;color:rgba(249,246,240,0.7);margin-bottom:0.5rem">Paste your brief text directly</label>
+    <textarea id="briefpaste" style="min-height:120px" placeholder="Copy and paste your assignment brief, unit criteria, or learning outcomes here. e.g. 1.1 Explain the main legislation covering safeguarding in your setting. 1.2 Describe your role and responsibilities in safeguarding..." oninput="handleBriefPaste(this)"></textarea>
+    <div class="hint">&#10003; Upload only &nbsp;|&nbsp; &#10003; Paste only &nbsp;|&nbsp; &#10003; Upload + Paste together &mdash; all three options work. The tool combines everything you provide.</div>
   </div>
 
   <div class="form-group">
@@ -437,10 +445,18 @@ function handleFileUpload(input) {
     return;
   }
 
-  // For PDF and Word — read as base64 and send to server to extract text
+  // Show helpful message for Word docs
+  if (ext === 'doc' || ext === 'docx') {
+    showWordDocWarning();
+    document.getElementById('brieffile').value = '';
+    return;
+  }
+
+  // For PDF — read as base64 and send to server to extract text
   var reader = new FileReader();
   reader.onload = function(e) {
     var base64 = e.target.result.split(',')[1];
+    document.getElementById('upload-box').querySelector('.upload-label').innerHTML = '<strong style="color:var(--gold)">Reading your brief...</strong>Please wait a moment';
     fetch('/api/extract-brief', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
@@ -451,26 +467,63 @@ function handleFileUpload(input) {
       if (data.text) {
         briefContent = data.text.slice(0, 8000);
         showUploadSuccess(file.name);
+      } else if (data.error === 'word_not_supported') {
+        showWordDocWarning();
+        document.getElementById('brieffile').value = '';
+        resetUploadBox();
       } else {
-        showToast('Could not read file. Try saving it as a .txt file and uploading again.');
+        showToast(data.error || 'Could not read file. Try saving as PDF or .txt.');
+        resetUploadBox();
       }
     })
     .catch(function() {
-      showToast('Could not read file. Try saving it as a .txt file and uploading again.');
+      showToast('Could not read file. Please try again.');
+      resetUploadBox();
     });
   };
   reader.readAsDataURL(file);
 }
 
+function handleBriefPaste(el) {
+  var pasted = el.value.trim();
+  if (pasted.length > 0) {
+    briefContent = briefContent ? briefContent + '\n\n' + pasted : pasted;
+  } else {
+    // If they cleared the paste box, remove pasted portion
+    // Just use whatever was uploaded
+    briefContent = window._uploadedBriefContent || '';
+  }
+}
+
+function resetUploadBox() {
+  document.getElementById('upload-box').querySelector('.upload-label').innerHTML = '<strong>Upload your Assignment Brief</strong>Click to upload or drag and drop your brief here<br/>Accepts PDF or Text (.txt) files';
+}
+
+function showWordDocWarning() {
+  var box = document.getElementById('word-warning');
+  if (box) { box.style.display = 'flex'; return; }
+  var warning = document.createElement('div');
+  warning.id = 'word-warning';
+  warning.style.cssText = 'display:flex;gap:10px;align-items:flex-start;background:rgba(200,100,30,0.08);border:1px solid rgba(200,120,30,0.35);border-radius:10px;padding:1rem 1.25rem;margin-top:0.75rem;font-size:13px;color:rgba(249,246,240,0.75);line-height:1.65';
+  warning.innerHTML = '<span style="font-size:1.2rem;flex-shrink:0">📄</span><div><strong style="color:#e8b04a;display:block;margin-bottom:0.35rem">Word documents cannot be uploaded directly</strong>To upload your assignment brief from Word, please do this:<br><br><strong style="color:rgba(249,246,240,0.85)">1.</strong> Open your brief in Microsoft Word<br><strong style="color:rgba(249,246,240,0.85)">2.</strong> Click <strong style="color:rgba(249,246,240,0.85)">File → Save As</strong><br><strong style="color:rgba(249,246,240,0.85)">3.</strong> Change the file type to <strong style="color:rgba(249,246,240,0.85)">PDF</strong><br><strong style="color:rgba(249,246,240,0.85)">4.</strong> Save it, then upload that PDF here<br><br>Alternatively you can copy and paste the brief text into the <strong style="color:rgba(249,246,240,0.85)">Additional Instructions</strong> box below.</div>';
+  var uploadBox = document.getElementById('upload-box');
+  uploadBox.parentNode.insertBefore(warning, uploadBox.nextSibling);
+}
+
 function showUploadSuccess(filename) {
+  window._uploadedBriefContent = briefContent;
   document.getElementById('upload-success').style.display = 'flex';
   document.getElementById('upload-filename').textContent = filename + ' — ready';
   document.getElementById('upload-box').style.borderColor = '#1d9e75';
   document.getElementById('upload-box').style.background = 'rgba(29,158,117,0.05)';
+  // Merge with any pasted text
+  var pasted = document.getElementById('briefpaste').value.trim();
+  if (pasted) briefContent = briefContent + '\n\n' + pasted;
 }
 
 function clearUpload() {
-  briefContent = '';
+  window._uploadedBriefContent = '';
+  briefContent = document.getElementById('briefpaste').value.trim();
   document.getElementById('brieffile').value = '';
   document.getElementById('upload-success').style.display = 'none';
   document.getElementById('upload-box').style.borderColor = '';
