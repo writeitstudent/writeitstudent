@@ -97,6 +97,14 @@ h1 span{color:var(--gold)}
 .security-bar{background:rgba(8,14,26,0.95);border-top:1px solid rgba(200,151,58,0.1);padding:0.85rem 2rem;display:flex;justify-content:center;gap:2rem;flex-wrap:wrap}
 .sec-item{display:flex;align-items:center;gap:6px;font-size:11px;color:rgba(249,246,240,0.38)}
 .sec-dot{width:6px;height:6px;background:#1d9e75;border-radius:50%;flex-shrink:0}
+.upload-box{border:2px dashed rgba(200,151,58,0.3);border-radius:10px;padding:1.25rem;text-align:center;cursor:pointer;transition:border-color 0.2s,background 0.2s;background:rgba(255,255,255,0.02);position:relative}
+.upload-box:hover{border-color:var(--gold);background:rgba(200,151,58,0.05)}
+.upload-box input[type="file"]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.upload-box .upload-icon{font-size:1.75rem;margin-bottom:0.5rem}
+.upload-box .upload-label{font-size:13px;color:rgba(249,246,240,0.6);line-height:1.6}
+.upload-box .upload-label strong{color:var(--gold);display:block;margin-bottom:0.25rem;font-size:14px}
+.upload-success{display:none;align-items:center;gap:8px;background:rgba(29,158,117,0.1);border:1px solid rgba(29,158,117,0.3);border-radius:8px;padding:0.6rem 1rem;margin-top:0.75rem;font-size:13px;color:rgba(249,246,240,0.8)}
+.upload-success .check{color:#1d9e75;font-size:1rem}
 .disclaimer-box{display:flex;gap:1rem;background:rgba(200,151,58,0.06);border:1px solid rgba(200,151,58,0.3);border-radius:12px;padding:1.25rem 1.5rem;margin-bottom:1.5rem;align-items:flex-start}
 .disclaimer-icon{font-size:1.4rem;flex-shrink:0;margin-top:2px}
 .disclaimer-text strong{display:block;font-size:13px;font-weight:600;color:var(--gold2);margin-bottom:0.5rem;letter-spacing:0.2px}
@@ -199,6 +207,25 @@ h1 span{color:var(--gold)}
     <textarea id="scenario" style="min-height:130px" placeholder="Describe a real situation from your work. e.g. 'I work with a 16-year-old in a residential home who disclosed abuse. I followed our safeguarding policy by…'"></textarea>
     <div class="hint">Makes your assignment unique to you. Names are anonymised automatically.</div>
   </div>
+  <div class="form-group">
+    <label>Assignment Brief <span class="opt">optional — highly recommended</span></label>
+    <div class="upload-box" id="upload-box">
+      <input type="file" id="brieffile" accept=".pdf,.doc,.docx,.txt" onchange="handleFileUpload(this)"/>
+      <div class="upload-icon">📄</div>
+      <div class="upload-label">
+        <strong>Upload your Assignment Brief</strong>
+        Click to upload or drag and drop your brief here<br/>
+        Accepts PDF, Word (.doc/.docx), or Text files
+      </div>
+    </div>
+    <div class="upload-success" id="upload-success">
+      <span class="check">✓</span>
+      <span id="upload-filename">Brief uploaded</span>
+      <button onclick="clearUpload()" style="margin-left:auto;background:none;border:none;color:rgba(249,246,240,0.4);cursor:pointer;font-size:12px">✕ Remove</button>
+    </div>
+    <div class="hint">Upload the exact brief from your assessor or awarding body. The tool will write directly to those requirements.</div>
+  </div>
+
   <div class="form-group">
     <label for="learneremail">Your Email Address <span class="opt">optional</span></label>
     <input type="email" id="learneremail" placeholder="you@example.com" style="min-height:unset"/>
@@ -379,6 +406,77 @@ h1 span{color:var(--gold)}
 </footer>
 
 <script>
+var briefContent = '';
+
+function handleFileUpload(input) {
+  var file = input.files[0];
+  if (!file) return;
+
+  var allowed = ['application/pdf','application/msword','application/vnd.openxmlformats-officedocument.wordprocessingml.document','text/plain'];
+  var ext = file.name.split('.').pop().toLowerCase();
+  var allowedExt = ['pdf','doc','docx','txt'];
+
+  if (!allowedExt.includes(ext)) {
+    showToast('Please upload a PDF, Word, or text file.');
+    return;
+  }
+
+  if (file.size > 5 * 1024 * 1024) {
+    showToast('File too large. Please upload a file under 5MB.');
+    return;
+  }
+
+  // For txt files — read directly
+  if (ext === 'txt') {
+    var reader = new FileReader();
+    reader.onload = function(e) {
+      briefContent = e.target.result.slice(0, 8000);
+      showUploadSuccess(file.name);
+    };
+    reader.readAsText(file);
+    return;
+  }
+
+  // For PDF and Word — read as base64 and send to server to extract text
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    var base64 = e.target.result.split(',')[1];
+    fetch('/api/extract-brief', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ base64: base64, ext: ext, name: file.name })
+    })
+    .then(function(res) { return res.json(); })
+    .then(function(data) {
+      if (data.text) {
+        briefContent = data.text.slice(0, 8000);
+        showUploadSuccess(file.name);
+      } else {
+        showToast('Could not read file. Try saving it as a .txt file and uploading again.');
+      }
+    })
+    .catch(function() {
+      showToast('Could not read file. Try saving it as a .txt file and uploading again.');
+    });
+  };
+  reader.readAsDataURL(file);
+}
+
+function showUploadSuccess(filename) {
+  document.getElementById('upload-success').style.display = 'flex';
+  document.getElementById('upload-filename').textContent = filename + ' — ready';
+  document.getElementById('upload-box').style.borderColor = '#1d9e75';
+  document.getElementById('upload-box').style.background = 'rgba(29,158,117,0.05)';
+}
+
+function clearUpload() {
+  briefContent = '';
+  document.getElementById('brieffile').value = '';
+  document.getElementById('upload-success').style.display = 'none';
+  document.getElementById('upload-box').style.borderColor = '';
+  document.getElementById('upload-box').style.background = '';
+}
+
 var MSGS = [
   'Analysing your question…',
   'Linking theory to practice…',
@@ -472,6 +570,7 @@ function generateAssignment() {
   ].join('\n');
 
   var userPrompt = 'QUESTION TO ANSWER: ' + question + '\n\n' +
+    (briefContent ? 'ASSIGNMENT BRIEF (follow these exact requirements, learning outcomes and criteria):\n' + briefContent + '\n\n' : '') +
     'WORD COUNT: ' + wordcount + ' words\n' +
     'QUALIFICATION LEVEL: ' + level + '\n' +
     'REFERENCING STYLE: ' + refstyle + '\n' +
