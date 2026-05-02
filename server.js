@@ -5,7 +5,7 @@ require('dotenv').config();
 const express   = require('express');
 const helmet    = require('helmet');
 const rateLimit = require('express-rate-limit');
-const nodemailer = require('nodemailer');
+const { Resend } = require('resend');
 const path      = require('path');
 const Anthropic = require('@anthropic-ai/sdk');
 
@@ -21,32 +21,22 @@ const anthropic = new Anthropic({
 });
 
 // ── EMAIL TRANSPORTER ─────────────────────────────────────────
-const transporter = nodemailer.createTransport({
-  host: 'smtp.gmail.com',
-  port: 587,
-  secure: false,
-  auth: {
-    user: process.env.ADMIN_EMAIL,
-    pass: process.env.GMAIL_APP_PASSWORD,
-  },
-  tls: {
-    rejectUnauthorized: false,
-    ciphers: 'SSLv3',
-  },
-  connectionTimeout: 10000,
-  greetingTimeout: 10000,
-  socketTimeout: 15000,
-});
+const resend = new Resend(process.env.RESEND_API_KEY);
 
-// Verify email connection on startup
-transporter.verify(function(error) {
-  if (error) {
-    console.error('[Email] SMTP connection failed:', error.message);
-    console.error('[Email] Check ADMIN_EMAIL and GMAIL_APP_PASSWORD in environment variables');
-  } else {
-    console.log('[Email] SMTP connection verified — emails ready to send');
+// Helper to send emails via Resend
+async function sendEmail(to, subject, text) {
+  try {
+    await resend.emails.send({
+      from: 'WriteIt <onboarding@resend.dev>',
+      to: to,
+      subject: subject,
+      text: text,
+    });
+    console.log('[Email] Sent to:', to);
+  } catch (err) {
+    console.error('[Email] Failed:', err.message);
   }
-});
+}
 
 // ── SECURITY HEADERS ──────────────────────────────────────────
 app.use(
@@ -194,9 +184,11 @@ app.post('/api/generate', generateLimiter, async function(req, res) {
       ].join('\n'),
     };
 
-    transporter.sendMail(adminMail).catch(function(err) {
-      console.error('[Email] Admin notification failed:', err.message);
-    });
+    sendEmail(
+      adminEmail,
+      adminMail.subject,
+      adminMail.text
+    );
 
     // ── Email learner preview (if email provided) ─────────────
     if (learneremail && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(learneremail)) {
@@ -230,9 +222,11 @@ app.post('/api/generate', generateLimiter, async function(req, res) {
         ].join('\n'),
       };
 
-      transporter.sendMail(learnerMail).catch(function(err) {
-        console.error('[Email] Learner preview failed:', err.message);
-      });
+      sendEmail(
+        learneremail,
+        learnerMail.subject,
+        learnerMail.text
+      );
     }
 
     // ── Return full text to frontend ──────────────────────────
