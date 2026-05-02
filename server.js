@@ -232,6 +232,53 @@ app.post('/api/generate', generateLimiter, async function(req, res) {
   }
 });
 
+// ── /api/extract-brief ───────────────────────────────────────
+app.post('/api/extract-brief', async function(req, res) {
+  try {
+    var base64 = req.body.base64;
+    var ext    = req.body.ext;
+    var name   = req.body.name || 'brief';
+
+    if (!base64 || typeof base64 !== 'string') {
+      return res.status(400).json({ error: 'No file data received.' });
+    }
+
+    // Use Claude to extract text from the document
+    var message = await anthropic.messages.create({
+      model: 'claude-opus-4-5',
+      max_tokens: 2000,
+      messages: [{
+        role: 'user',
+        content: [
+          {
+            type: 'document',
+            source: {
+              type: 'base64',
+              media_type: ext === 'pdf' ? 'application/pdf' : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+              data: base64
+            }
+          },
+          {
+            type: 'text',
+            text: 'Extract and return all the text content from this assignment brief document. Return only the raw text, no commentary, no formatting marks. Include all learning outcomes, assessment criteria, and instructions.'
+          }
+        ]
+      }]
+    });
+
+    var text = message.content
+      .filter(function(b) { return b.type === 'text'; })
+      .map(function(b) { return b.text; })
+      .join('\n');
+
+    return res.json({ text: text });
+
+  } catch (err) {
+    console.error('[/api/extract-brief] Error:', err.message || err);
+    return res.status(500).json({ error: 'Could not extract text from file. Please try saving as .txt and uploading again.' });
+  }
+});
+
 // ── HEALTH CHECK ──────────────────────────────────────────────
 app.get('/api/health', function(req, res) {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
