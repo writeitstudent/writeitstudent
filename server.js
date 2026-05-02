@@ -236,14 +236,22 @@ app.post('/api/generate', generateLimiter, async function(req, res) {
 app.post('/api/extract-brief', async function(req, res) {
   try {
     var base64 = req.body.base64;
-    var ext    = req.body.ext;
+    var ext    = (req.body.ext || '').toLowerCase();
     var name   = req.body.name || 'brief';
 
     if (!base64 || typeof base64 !== 'string') {
       return res.status(400).json({ error: 'No file data received.' });
     }
 
-    // Use Claude to extract text from the document
+    // Only PDF is supported via Claude's document API
+    if (ext !== 'pdf') {
+      return res.status(400).json({
+        error: 'word_not_supported',
+        message: 'Word documents cannot be read directly. Please open your brief in Word, then File → Save As → PDF, and upload the PDF version instead.'
+      });
+    }
+
+    // Use Claude to extract text from PDF
     var message = await anthropic.messages.create({
       model: 'claude-opus-4-5',
       max_tokens: 2000,
@@ -254,13 +262,13 @@ app.post('/api/extract-brief', async function(req, res) {
             type: 'document',
             source: {
               type: 'base64',
-              media_type: ext === 'pdf' ? 'application/pdf' : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+              media_type: 'application/pdf',
               data: base64
             }
           },
           {
             type: 'text',
-            text: 'Extract and return all the text content from this assignment brief document. Return only the raw text, no commentary, no formatting marks. Include all learning outcomes, assessment criteria, and instructions.'
+            text: 'Extract and return all the text content from this assignment brief. Return only the raw text. Include all learning outcomes, assessment criteria, unit titles, and instructions exactly as written.'
           }
         ]
       }]
@@ -271,11 +279,15 @@ app.post('/api/extract-brief', async function(req, res) {
       .map(function(b) { return b.text; })
       .join('\n');
 
+    if (!text || text.trim().length < 20) {
+      return res.status(400).json({ error: 'Could not read text from this PDF. Please try saving your brief as a .txt file and uploading that instead.' });
+    }
+
     return res.json({ text: text });
 
   } catch (err) {
     console.error('[/api/extract-brief] Error:', err.message || err);
-    return res.status(500).json({ error: 'Could not extract text from file. Please try saving as .txt and uploading again.' });
+    return res.status(500).json({ error: 'Could not read file. Please save your brief as a PDF or .txt file and try again.' });
   }
 });
 
