@@ -12,6 +12,9 @@ const Anthropic = require('@anthropic-ai/sdk');
 const app  = express();
 const PORT = process.env.PORT || 3000;
 
+// Trust Render's proxy (required for rate limiting to work correctly)
+app.set('trust proxy', 1);
+
 // ── ANTHROPIC CLIENT ──────────────────────────────────────────
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -19,11 +22,26 @@ const anthropic = new Anthropic({
 
 // ── EMAIL TRANSPORTER ─────────────────────────────────────────
 const transporter = nodemailer.createTransport({
-  service: 'gmail',
+  host: 'smtp.gmail.com',
+  port: 465,
+  secure: true,
   auth: {
     user: process.env.ADMIN_EMAIL,
     pass: process.env.GMAIL_APP_PASSWORD,
   },
+  tls: {
+    rejectUnauthorized: true,
+  },
+});
+
+// Verify email connection on startup
+transporter.verify(function(error) {
+  if (error) {
+    console.error('[Email] SMTP connection failed:', error.message);
+    console.error('[Email] Check ADMIN_EMAIL and GMAIL_APP_PASSWORD in environment variables');
+  } else {
+    console.log('[Email] SMTP connection verified — emails ready to send');
+  }
 });
 
 // ── SECURITY HEADERS ──────────────────────────────────────────
