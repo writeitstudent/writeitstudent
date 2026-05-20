@@ -513,7 +513,7 @@ function showLimitMessage() {
   box.id = 'limit-message';
   box.style.cssText = 'margin-top:1.5rem;background:linear-gradient(135deg,rgba(200,151,58,0.12),rgba(200,151,58,0.04));border:1px solid rgba(200,151,58,0.35);border-radius:14px;padding:1.75rem;text-align:center;';
   box.innerHTML = '<div style="font-size:2rem;margin-bottom:0.75rem">✋</div>' +
-    '<h3 style="font-family:Playfair Display,serif;font-size:1.2rem;color:#fff;margin-bottom:0.6rem">Free Preview Used</h3>' +
+    '<h3 style="font-family:Playfair Display,serif;font-size:1.2rem;color:#fff;margin-bottom:0.6rem">No More Free Generations</h3>' +
     '<p style="font-size:13px;color:rgba(249,246,240,0.65);line-height:1.7;margin-bottom:1.25rem">You have used your free assignment preview. To generate more assignments, please get in touch with admin to discuss a plan that works for you.</p>' +
     '<a href="mailto:writeit.student@gmail.com?subject=Assignment Access&body=Hi, I have used my free preview and would like to discuss a plan to get more assignments. Please send me the details." style="display:inline-block;background:#c8973a;color:#0f1b35;font-weight:700;font-size:14px;padding:0.75rem 1.75rem;border-radius:8px;text-decoration:none;">Contact Admin to Continue</a>' +
     '<p style="margin-top:0.75rem;font-size:12px;color:rgba(249,246,240,0.4)">writeit.student@gmail.com</p>';
@@ -606,7 +606,7 @@ function generateAssignment() {
           document.getElementById('loading-area').style.display = 'none';
           btn.disabled = false;
           showLimitMessage();
-          throw new Error('limit');
+          throw new Error('free_limit_reached');
         }
         throw new Error(e.message || e.error || 'Server error.');
       });
@@ -629,7 +629,7 @@ function generateAssignment() {
     document.getElementById('loading-area').style.display = 'none';
     btn.disabled = false;
     var msg = err.message || '';
-    if (msg.indexOf('free_limit_reached') !== -1 || msg.indexOf('used your free preview') !== -1) {
+    if (msg.indexOf('free_limit_reached') !== -1 || msg.indexOf('used your free preview') !== -1 || msg === 'limit') {
       showLimitMessage();
     } else {
       showToast('Error: ' + (msg || 'Something went wrong. Please try again.'));
