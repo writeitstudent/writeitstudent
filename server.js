@@ -5,9 +5,9 @@ require('dotenv').config();
 const express   = require('express');
 const helmet    = require('helmet');
 const rateLimit = require('express-rate-limit');
-const { Resend } = require('resend');
 const path      = require('path');
 const Anthropic = require('@anthropic-ai/sdk');
+const { Resend } = require('resend');
 
 const app  = express();
 const PORT = process.env.PORT || 3000;
@@ -20,10 +20,9 @@ const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
-// ── EMAIL TRANSPORTER ─────────────────────────────────────────
+// ── RESEND EMAIL CLIENT ───────────────────────────────────────
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-// Helper to send emails via Resend
 async function sendEmail(to, subject, text) {
   try {
     await resend.emails.send({
@@ -61,8 +60,7 @@ app.use(
 // ── CORS ──────────────────────────────────────────────────────
 const ALLOWED_ORIGINS = [
   process.env.SITE_URL || 'http://localhost:3000',
-  'https://writeit.co.uk',
-  'https://www.writeit.co.uk',
+  'https://writeit-awba.onrender.com',
 ];
 
 app.use(function(req, res, next) {
@@ -72,9 +70,7 @@ app.use(function(req, res, next) {
   }
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-  if (req.method === 'OPTIONS') {
-    return res.sendStatus(204);
-  }
+  if (req.method === 'OPTIONS') return res.sendStatus(204);
   next();
 });
 
@@ -83,36 +79,40 @@ app.use(express.json({ limit: '16kb' }));
 app.use(express.urlencoded({ extended: false }));
 
 // ── RATE LIMITING ─────────────────────────────────────────────
-const generateLimiter = rateLimit({
-  windowMs: 60 * 60 * 1000,
-  max: 5,
+
+// Global limiter — max 20 requests per minute per IP (covers all routes)
+const globalLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 20,
   standardHeaders: true,
   legacyHeaders: false,
+  message: { error: 'Too many requests. Please slow down.' },
+});
+app.use(globalLimiter);
+
+// Generate limiter — FREE users get 1 generation per 24 hours per IP
+const generateLimiter = rateLimit({
+  windowMs: 24 * 60 * 60 * 1000, // 24 hours
+  max: 1,
+  standardHeaders: true,
+  legacyHeaders: false,
+  skipFailedRequests: false,
   message: {
-    error: 'Too many requests from this IP. Please wait an hour or subscribe for priority access.',
+    error: 'free_limit_reached',
+    message: 'You have used your free preview. To generate more assignments, please contact admin at writeit.student@gmail.com to discuss a plan.'
   },
 });
 
-const globalLimiter = rateLimit({
-  windowMs: 60 * 1000,
-  max: 30,
-  message: { error: 'Too many requests. Please slow down.' },
-});
-
-app.use(globalLimiter);
-
 // ── STATIC FILES ──────────────────────────────────────────────
-app.use(
-  express.static(path.join(__dirname, 'public'), {
-    etag: true,
-    maxAge: '1d',
-    setHeaders: function(res, filePath) {
-      if (filePath.endsWith('.html')) {
-        res.setHeader('Cache-Control', 'no-cache');
-      }
-    },
-  })
-);
+app.use(express.static(path.join(__dirname, 'public'), {
+  etag: true,
+  maxAge: '1d',
+  setHeaders: function(res, filePath) {
+    if (filePath.endsWith('.html')) {
+      res.setHeader('Cache-Control', 'no-cache');
+    }
+  },
+}));
 
 // ── INPUT SANITISER ───────────────────────────────────────────
 function sanitise(str, maxLen) {
@@ -124,12 +124,12 @@ function sanitise(str, maxLen) {
 // ── /api/generate ─────────────────────────────────────────────
 app.post('/api/generate', generateLimiter, async function(req, res) {
   try {
-    const system      = req.body.system;
-    const userPrompt  = req.body.userPrompt;
+    const system       = req.body.system;
+    const userPrompt   = req.body.userPrompt;
     const learneremail = req.body.learneremail || '';
-    const question    = req.body.question || '';
-    const level       = req.body.level || '';
-    const wordcount   = req.body.wordcount || '';
+    const question     = req.body.question || '';
+    const level        = req.body.level || '';
+    const wordcount    = req.body.wordcount || '';
 
     if (!userPrompt || typeof userPrompt !== 'string' || userPrompt.length < 10) {
       return res.status(400).json({ error: 'Invalid prompt.' });
@@ -146,9 +146,7 @@ app.post('/api/generate', generateLimiter, async function(req, res) {
       model:      'claude-opus-4-5',
       max_tokens: 4096,
       system:     cleanSystem,
-      messages: [
-        { role: 'user', content: cleanPrompt },
-      ],
+      messages: [{ role: 'user', content: cleanPrompt }],
     });
 
     const fullText = message.content
@@ -160,150 +158,118 @@ app.post('/api/generate', generateLimiter, async function(req, res) {
     const adminEmail = process.env.ADMIN_EMAIL || 'writeit.student@gmail.com';
     const timestamp  = new Date().toLocaleString('en-GB', { timeZone: 'Africa/Lusaka' });
 
-    const adminMail = {
-      from:    '"WriteIt System" <' + adminEmail + '>',
-      to:      adminEmail,
-      subject: '[WriteIt] New Assignment — ' + (level || 'Unknown Level') + ' — ' + timestamp,
-      text: [
-        '=== WRITEIT — NEW ASSIGNMENT GENERATED ===',
-        '',
-        'Timestamp:     ' + timestamp,
-        'Level:         ' + (level || 'Not specified'),
-        'Word Count:    ' + (wordcount || 'Not specified'),
-        'Learner Email: ' + (learneremail || 'Not provided'),
-        'Client IP:     ' + req.ip,
-        '',
-        '--- QUESTION ---',
-        sanitise(question, 2000),
-        '',
-        '--- FULL ASSIGNMENT (send to learner upon payment) ---',
-        '',
-        fullText,
-        '',
-        '=== END ===',
-      ].join('\n'),
-    };
+    const adminSubject = '[WriteIt] New Assignment — ' + (level || 'Unknown Level') + ' — ' + timestamp;
+    const adminText = [
+      '=== WRITEIT — NEW ASSIGNMENT GENERATED ===',
+      '',
+      'Timestamp:     ' + timestamp,
+      'Level:         ' + (level || 'Not specified'),
+      'Word Count:    ' + (wordcount || 'Not specified'),
+      'Learner Email: ' + (learneremail || 'Not provided'),
+      'Client IP:     ' + req.ip,
+      '',
+      '--- QUESTION ---',
+      sanitise(question, 2000),
+      '',
+      '--- FULL ASSIGNMENT (send to learner upon payment) ---',
+      '',
+      fullText,
+      '',
+      '=== END ===',
+    ].join('\n');
 
-    sendEmail(
-      adminEmail,
-      adminMail.subject,
-      adminMail.text
-    );
+    sendEmail(adminEmail, adminSubject, adminText);
 
-    // ── Email learner preview (if email provided) ─────────────
+    // ── Email learner preview if email provided ───────────────
     if (learneremail && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(learneremail)) {
       const words      = fullText.split(/\s+/);
       const previewEnd = Math.floor(words.length * 0.40);
       const preview    = words.slice(0, previewEnd).join(' ') + '\n\n[…continued — contact admin for full assignment]';
 
-      const learnerMail = {
-        from:    '"WriteIt Assignment Assistant" <' + adminEmail + '>',
-        to:      learneremail,
-        subject: 'Your WriteIt Assignment Preview',
-        text: [
-          'Hello,',
-          '',
-          'Thank you for using WriteIt Assignment Assistant.',
-          '',
-          'Your assignment preview is below. To receive the full assignment and',
-          'complete reference list, please contact admin:',
-          '',
-          '  writeit.student@gmail.com',
-          '',
-          '--- YOUR ASSIGNMENT PREVIEW ---',
-          '',
-          preview,
-          '',
-          '--- END OF PREVIEW ---',
-          '',
-          'Best regards,',
-          'WriteIt Assignment Assistant',
-          'writeit.student@gmail.com',
-        ].join('\n'),
-      };
+      const learnerSubject = 'Your WriteIt Assignment Preview';
+      const learnerText = [
+        'Hello,',
+        '',
+        'Thank you for using WriteIt Assignment Assistant.',
+        '',
+        'Your assignment preview is below. To receive the complete assignment',
+        'and full reference list, please contact admin:',
+        '',
+        '  writeit.student@gmail.com',
+        '',
+        '--- YOUR ASSIGNMENT PREVIEW ---',
+        '',
+        preview,
+        '',
+        '--- END OF PREVIEW ---',
+        '',
+        'Best regards,',
+        'WriteIt Assignment Assistant',
+        'writeit.student@gmail.com',
+      ].join('\n');
 
-      sendEmail(
-        learneremail,
-        learnerMail.subject,
-        learnerMail.text
-      );
+      sendEmail(learneremail, learnerSubject, learnerText);
     }
 
-    // ── Return full text to frontend ──────────────────────────
     return res.json({ content: fullText });
 
   } catch (err) {
     console.error('[/api/generate] Error:', err.message || err);
-
-    if (err.status === 429) {
-      return res.status(429).json({ error: 'AI service is busy. Please try again in a moment.' });
-    }
-    if (err.status === 401) {
-      return res.status(500).json({ error: 'API key error. Please contact admin.' });
-    }
-
-    return res.status(500).json({
-      error: err.message || 'Something went wrong. Please try again or contact writeit.student@gmail.com',
-    });
+    if (err.status === 429) return res.status(429).json({ error: 'AI service busy. Please try again in a moment.' });
+    if (err.status === 401) return res.status(500).json({ error: 'API key error. Please contact admin.' });
+    return res.status(500).json({ error: err.message || 'Something went wrong. Please try again.' });
   }
 });
 
-// ── /api/extract-brief ───────────────────────────────────────
+// ── /api/extract-brief ────────────────────────────────────────
 app.post('/api/extract-brief', async function(req, res) {
   try {
-    var base64 = req.body.base64;
-    var ext    = (req.body.ext || '').toLowerCase();
-    var name   = req.body.name || 'brief';
+    const base64 = req.body.base64;
+    const ext    = (req.body.ext || '').toLowerCase();
 
     if (!base64 || typeof base64 !== 'string') {
       return res.status(400).json({ error: 'No file data received.' });
     }
 
-    // Only PDF is supported via Claude's document API
     if (ext !== 'pdf') {
       return res.status(400).json({
         error: 'word_not_supported',
-        message: 'Word documents cannot be read directly. Please open your brief in Word, then File → Save As → PDF, and upload the PDF version instead.'
+        message: 'Please save your Word doc as PDF first: File → Save As → PDF, then upload the PDF.',
       });
     }
 
-    // Use Claude to extract text from PDF
-    var message = await anthropic.messages.create({
-      model: 'claude-opus-4-5',
+    const message = await anthropic.messages.create({
+      model:      'claude-opus-4-5',
       max_tokens: 2000,
       messages: [{
         role: 'user',
         content: [
           {
             type: 'document',
-            source: {
-              type: 'base64',
-              media_type: 'application/pdf',
-              data: base64
-            }
+            source: { type: 'base64', media_type: 'application/pdf', data: base64 }
           },
           {
             type: 'text',
-            text: 'Extract and return all the text content from this assignment brief. Return only the raw text. Include all learning outcomes, assessment criteria, unit titles, and instructions exactly as written.'
+            text: 'Extract and return all the text from this assignment brief. Include all learning outcomes, assessment criteria, unit titles, and instructions exactly as written. Return plain text only.'
           }
         ]
       }]
     });
 
-    var text = message.content
+    const text = message.content
       .filter(function(b) { return b.type === 'text'; })
       .map(function(b) { return b.text; })
       .join('\n');
 
     if (!text || text.trim().length < 20) {
-      return res.status(400).json({ error: 'Could not read text from this PDF. Please try saving your brief as a .txt file and uploading that instead.' });
+      return res.status(400).json({ error: 'Could not read text from this PDF. Try saving as .txt and uploading that instead.' });
     }
 
     return res.json({ text: text });
 
   } catch (err) {
     console.error('[/api/extract-brief] Error:', err.message || err);
-    return res.status(500).json({ error: 'Could not read file. Please save your brief as a PDF or .txt file and try again.' });
+    return res.status(500).json({ error: 'Could not read file. Please save as PDF or .txt and try again.' });
   }
 });
 
@@ -317,12 +283,13 @@ app.get('*', function(req, res) {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// ── START SERVER ──────────────────────────────────────────────
+// ── START ─────────────────────────────────────────────────────
 app.listen(PORT, function() {
   console.log('');
   console.log('  WriteIt Assignment Assistant');
   console.log('  Running at: http://localhost:' + PORT);
-  console.log('  Admin email: ' + (process.env.ADMIN_EMAIL || 'NOT SET — check .env'));
-  console.log('  Anthropic key: ' + (process.env.ANTHROPIC_API_KEY ? 'SET' : 'MISSING — check .env'));
+  console.log('  Admin email: ' + (process.env.ADMIN_EMAIL || 'NOT SET'));
+  console.log('  Anthropic key: ' + (process.env.ANTHROPIC_API_KEY ? 'SET' : 'MISSING'));
+  console.log('  Resend key: ' + (process.env.RESEND_API_KEY ? 'SET' : 'MISSING'));
   console.log('');
 });
